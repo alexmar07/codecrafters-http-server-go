@@ -27,15 +27,18 @@ func main() {
 
 	defer l.Close()
 
-	conn, err := l.Accept()
+	for {
 
-	if err != nil {
-		fmt.Println("Error accepting connection: ", err.Error())
-		os.Exit(1)
+		conn, err := l.Accept()
+
+		if err != nil {
+			fmt.Println("Error accepting connection: ", err.Error())
+			os.Exit(1)
+		}
+
+		go handler(conn)
 	}
 
-	handler(conn)
-	// conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
 }
 
 func handler(c net.Conn) {
