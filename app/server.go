@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 )
@@ -38,38 +40,34 @@ func main() {
 
 func handler(c net.Conn) {
 
-	buffer := make([]byte, 1024)
+	req, err := http.ReadRequest(bufio.NewReader(c))
 
-	n, _ := c.Read(buffer)
-
-	req := string(buffer[:n])
-
-	splits := strings.Split(req, " ")
-
-	if len(splits) < 3 {
-		log.Fatal("Not excepted request")
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	path := splits[1]
+	path := req.URL.Path
 
 	if path == "/" {
 		handlerResponseOk(c)
-	} else if strings.HasPrefix(path, "/echo") {
-		splitsPath := strings.Split(path, "/")
+	} else if path == "/user-agent" {
 
-		if len(splitsPath) != 3 {
-			handlerResponseNotFound(c)
-		} else {
-			argument := splitsPath[2]
+		userAgent := req.UserAgent()
 
-			content := &Content{
-				Length: len(argument),
-				Body:   argument,
-			}
-
-			handlerResponse(c, 200, content)
+		content := &Content{
+			Length: len(userAgent),
+			Body:   userAgent,
 		}
 
+		handlerResponse(c, 200, content)
+	} else if strings.HasPrefix(path, "/echo") {
+		_, param, _ := strings.Cut(path, "/echo/")
+		content := &Content{
+			Length: len(param),
+			Body:   param,
+		}
+
+		handlerResponse(c, 200, content)
 	} else {
 		handlerResponseNotFound(c)
 	}
