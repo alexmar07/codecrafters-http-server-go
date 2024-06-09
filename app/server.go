@@ -8,6 +8,11 @@ import (
 	"strings"
 )
 
+type Content struct {
+	Length int
+	Body   string
+}
+
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
@@ -47,11 +52,57 @@ func handler(c net.Conn) {
 
 	path := splits[1]
 
-	switch path {
-	case "/":
-		c.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
-	default:
-		c.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
+	if path == "/" {
+		handlerResponseOk(c)
+	} else if strings.HasPrefix(path, "/echo") {
+		splitsPath := strings.Split(path, "/")
+
+		if len(splitsPath) != 3 {
+			handlerResponseNotFound(c)
+		} else {
+			argument := splitsPath[2]
+
+			content := &Content{
+				Length: len(argument),
+				Body:   argument,
+			}
+
+			handlerResponse(c, 200, content)
+		}
+
+	} else {
+		handlerResponseNotFound(c)
+	}
+}
+
+func handlerResponse(c net.Conn, statusCode int, content *Content) {
+
+	statusReason := getReasonByStatusCode(statusCode)
+
+	if content == nil {
+		c.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\n\r\n", statusCode, statusReason)))
+	} else {
+		c.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", statusCode, statusReason, content.Length, content.Body)))
 	}
 
+}
+
+func handlerResponseOk(c net.Conn) {
+	handlerResponse(c, 200, nil)
+}
+
+func handlerResponseNotFound(c net.Conn) {
+	handlerResponse(c, 404, nil)
+}
+
+func getReasonByStatusCode(statusCode int) string {
+
+	switch statusCode {
+	case 200:
+		return "OK"
+	case 404:
+		return "Not Found"
+	}
+
+	return ""
 }
