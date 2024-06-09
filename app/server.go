@@ -11,8 +11,9 @@ import (
 )
 
 type Content struct {
-	Length int
-	Body   string
+	Length      int
+	Body        string
+	ContentType string
 }
 
 func main() {
@@ -58,19 +59,40 @@ func handler(c net.Conn) {
 		userAgent := req.UserAgent()
 
 		content := &Content{
-			Length: len(userAgent),
-			Body:   userAgent,
+			Length:      len(userAgent),
+			Body:        userAgent,
+			ContentType: "text/plain",
 		}
 
 		handlerResponse(c, 200, content)
 	} else if strings.HasPrefix(path, "/echo") {
-		_, param, _ := strings.Cut(path, "/echo/")
+		param := strings.TrimPrefix(path, "/echo/")
 		content := &Content{
-			Length: len(param),
-			Body:   param,
+			Length:      len(param),
+			Body:        param,
+			ContentType: "text/plain",
 		}
 
 		handlerResponse(c, 200, content)
+	} else if strings.HasPrefix(path, "/files") {
+		fileName := strings.TrimPrefix(path, "/files/")
+
+		dir := os.Args[2]
+
+		fileData, err := os.ReadFile(dir + fileName)
+
+		if err != nil {
+			handlerResponseNotFound(c)
+		}
+
+		content := &Content{
+			Length:      len(fileData),
+			Body:        string(fileData),
+			ContentType: "application/octet-stream",
+		}
+
+		handlerResponse(c, 200, content)
+
 	} else {
 		handlerResponseNotFound(c)
 	}
@@ -83,7 +105,7 @@ func handlerResponse(c net.Conn, statusCode int, content *Content) {
 	if content == nil {
 		c.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\n\r\n", statusCode, statusReason)))
 	} else {
-		c.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\n%s", statusCode, statusReason, content.Length, content.Body)))
+		c.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s", statusCode, statusReason, content.ContentType, content.Length, content.Body)))
 	}
 
 }
