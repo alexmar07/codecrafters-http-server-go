@@ -74,7 +74,7 @@ func handler(c net.Conn) {
 		}
 
 		handlerResponse(c, 200, content)
-	} else if strings.HasPrefix(path, "/files") {
+	} else if strings.HasPrefix(path, "/files") && req.Method == "GET" {
 		fileName := strings.TrimPrefix(path, "/files/")
 
 		dir := os.Args[2]
@@ -92,6 +92,21 @@ func handler(c net.Conn) {
 		}
 
 		handlerResponse(c, 200, content)
+
+	} else if strings.HasPrefix(path, "/files") && req.Method == "POST" {
+		fileName := strings.TrimPrefix(path, "/files/")
+
+		dir := os.Args[2]
+
+		buf := make([]byte, req.ContentLength)
+
+		n, _ := req.Body.Read(buf)
+
+		data := string(buf[:n])
+
+		os.WriteFile(dir+fileName, []byte(data), 0644)
+
+		handlerResponseCreated(c)
 
 	} else {
 		handlerResponseNotFound(c)
@@ -114,6 +129,10 @@ func handlerResponseOk(c net.Conn) {
 	handlerResponse(c, 200, nil)
 }
 
+func handlerResponseCreated(c net.Conn) {
+	handlerResponse(c, 201, nil)
+}
+
 func handlerResponseNotFound(c net.Conn) {
 	handlerResponse(c, 404, nil)
 }
@@ -123,6 +142,8 @@ func getReasonByStatusCode(statusCode int) string {
 	switch statusCode {
 	case 200:
 		return "OK"
+	case 201:
+		return "Created"
 	case 404:
 		return "Not Found"
 	}
