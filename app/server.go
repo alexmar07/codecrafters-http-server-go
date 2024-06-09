@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -18,11 +20,38 @@ func main() {
 
 	defer l.Close()
 
-	conn , err := l.Accept()
+	conn, err := l.Accept()
+
 	if err != nil {
 		fmt.Println("Error accepting connection: ", err.Error())
 		os.Exit(1)
 	}
 
-	conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
+	handler(conn)
+	// conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
+}
+
+func handler(c net.Conn) {
+
+	buffer := make([]byte, 1024)
+
+	n, _ := c.Read(buffer)
+
+	req := string(buffer[:n])
+
+	splits := strings.Split(req, " ")
+
+	if len(splits) < 3 {
+		log.Fatal("Not excepted request")
+	}
+
+	path := splits[1]
+
+	switch path {
+	case "/":
+		c.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
+	default:
+		c.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
+	}
+
 }
