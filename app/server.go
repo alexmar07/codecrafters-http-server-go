@@ -14,6 +14,7 @@ type Content struct {
 	Length      int
 	Body        string
 	ContentType string
+	Encoding    string
 }
 
 func main() {
@@ -67,10 +68,14 @@ func handler(c net.Conn) {
 		handlerResponse(c, 200, content)
 	} else if strings.HasPrefix(path, "/echo") {
 		param := strings.TrimPrefix(path, "/echo/")
+
+		fmt.Println(req.Header.Get("Accept-Encoding"))
+
 		content := &Content{
 			Length:      len(param),
 			Body:        param,
 			ContentType: "text/plain",
+			Encoding:    req.Header.Get("Accept-Encoding"),
 		}
 
 		handlerResponse(c, 200, content)
@@ -119,8 +124,10 @@ func handlerResponse(c net.Conn, statusCode int, content *Content) {
 
 	if content == nil {
 		c.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\n\r\n", statusCode, statusReason)))
-	} else {
+	} else if content.Encoding == "" || content.Encoding == "invalid-encoding" {
 		c.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s", statusCode, statusReason, content.ContentType, content.Length, content.Body)))
+	} else {
+		c.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\nContent-Encoding: %s\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s", statusCode, statusReason, content.Encoding, content.ContentType, content.Length, content.Body)))
 	}
 
 }
