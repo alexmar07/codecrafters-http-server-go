@@ -124,10 +124,10 @@ func handlerResponse(c net.Conn, statusCode int, content *Content) {
 
 	if content == nil {
 		c.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\n\r\n", statusCode, statusReason)))
-	} else if content.Encoding == "" || content.Encoding == "invalid-encoding" {
+	} else if content.Encoding == "" || !strings.Contains(content.Encoding, "gzip") {
 		c.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s", statusCode, statusReason, content.ContentType, content.Length, content.Body)))
 	} else {
-		c.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\nContent-Encoding: %s\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s", statusCode, statusReason, content.Encoding, content.ContentType, content.Length, content.Body)))
+		c.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\nContent-Encoding: gzip\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s", statusCode, statusReason, content.ContentType, content.Length, content.Body)))
 	}
 
 }
