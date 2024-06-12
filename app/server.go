@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"log"
 	"net"
@@ -69,8 +71,6 @@ func handler(c net.Conn) {
 	} else if strings.HasPrefix(path, "/echo") {
 		param := strings.TrimPrefix(path, "/echo/")
 
-		fmt.Println(req.Header.Get("Accept-Encoding"))
-
 		content := &Content{
 			Length:      len(param),
 			Body:        param,
@@ -127,7 +127,22 @@ func handlerResponse(c net.Conn, statusCode int, content *Content) {
 	} else if content.Encoding == "" || !strings.Contains(content.Encoding, "gzip") {
 		c.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s", statusCode, statusReason, content.ContentType, content.Length, content.Body)))
 	} else {
-		c.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\nContent-Encoding: gzip\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s", statusCode, statusReason, content.ContentType, content.Length, content.Body)))
+
+		var b bytes.Buffer
+
+		gz := gzip.NewWriter(&b)
+
+		_, err := gz.Write([]byte(content.Body))
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if err := gz.Close(); err != nil {
+			log.Fatal(err)
+		}
+
+		c.Write([]byte(fmt.Sprintf("HTTP/1.1 %d %s\r\nContent-Encoding: gzip\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n%s", statusCode, statusReason, content.ContentType, len(b.String()), b.String())))
 	}
 
 }
